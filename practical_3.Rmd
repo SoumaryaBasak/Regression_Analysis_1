@@ -1,0 +1,162 @@
+---
+title: "Practical-3"
+author: "Soumarya Basak"
+output: 
+  pdf_document: 
+    keep_tex: yes
+---
+
+# Problem 1
+
+
+## Data Input 
+
+```{r}
+library(readr)
+df<- read.csv("C:\\Users\\souma\\Dropbox\\Mstat_CU\\Sem 2\\Regression_analysis_1\\Data Sets\\cob-doglas.csv")
+
+
+```
+## Scatter Plot
+```{r}
+plot(df[,-1])
+```
+We can see that `k` and `o` are not linearly related.
+```{r}
+plot(df$k, df$o, xlab="K", ylab = "O", main = " Relatioship between O and K variable")
+```
+
+
+Lets go for Cobb-Doglas Model
+
+$$O_t=\alpha L_t^{\beta_1}k_{t}^{\beta_2}u_t$$
+$$logO_t =\alpha^*+\beta_1logL_t+\beta_2logK_t+v_t$$
+## Let's Fit the model
+```{r}
+reg1<- lm(log(o)~log(L)+log(k),data = df)
+summary(reg1)
+```
+
+
+## Test for Durbin Watson Test
+
+```{r}
+library(car)
+durbinWatsonTest(reg1)
+```
+So, under 95% level of significant we accept that there is Autocorrelation in the data.
+
+The value of Durbin Watson Test statistics is , d= 0.8869685
+
+
+## Remedial Measure
+
+```{r}
+library(orcutt)
+cochrane.orcutt(reg1, convergence =5, max.iter=1000)
+```
+## The Final Model
+
+$$logO_t =1.894243 + (1.759270 \times logL_t)-(0.136710 \times logK_t)$$
+
+
+# Problem 2
+
+## Data
+```{r}
+library(readr)
+df<- read.csv("C:\\Users\\souma\\Dropbox\\Mstat_CU\\Sem 2\\Regression_analysis_1\\Data Sets\\coal.csv")
+head(df)
+colnames(df)<- c("sl.no","x","y")
+head(df)
+```
+
+## Scatter Plot
+```{r}
+plot(df$x,df$y,main = "Scatter Plot")
+```
+
+## Lets fit the model
+
+```{r}
+reg2<- lm(y~x,data=df)
+summary(reg2)
+```
+## Check for influencial Observation
+```{r}
+influence.measures(reg2)
+```
+So, we get 4 influential measures--- 26,29,31,32 th observation
+
+Lets remove them and fit the data again
+
+```{r}
+df1<- df[-c(26,29,31,32),]
+
+reg2<- lm(y~x, data=df1)
+summary(reg2)
+
+```
+SO, after removing 4 observation, the model fits more well as adjusted $R^2$ increase.
+
+## Lets check for residuals
+```{r}
+res<- resid(reg2)
+
+# residual plot
+plot(df1$x,res,main = "Residual plot")
+abline(h=0)
+```
+Its, unclear from the residual plot that is there heterosecdasticity present or not.
+
+So, lets test it,
+##### GQ Test
+```{r}
+library(lmtest)
+gqtest(reg2, fraction = 8 ,order.by = ~x,data = df1)
+```
+The p-value is =0.06281
+So, we fail to reject the null,
+SO the data is homoscedastic
+
+
+## Check for Autocorrelation
+### Durbin Watson Test
+
+```{r}
+library(car)
+durbinWatsonTest(reg2)
+```
+Since the p value is less than 0.05
+
+SO, we reject the null that autocorrelation is absent
+
+So, there is Autocorrelation in the data
+
+## Remedial Measure
+```{r}
+library(orcutt)
+cochrane.orcutt(reg2, convergence = 8, max.iter = 1000)
+```
+
+## The Final MOdel
+
+$$y=3.235024 + 0.428367 \times x$$
+
+where $y=$ Price of Bit.coal, and $x=$ Price of oil
+
+### Scatter Plot
+```{r}
+plot(df1$x,df1$y,main = "The Final Regression Plot",xlab="Price of oil",ylab = "Price of Oil")
+abline(3.235024,0.428367,col='red',lty=2)
+
+```
+But as here is only one regressor w can't find the auto correlation among the regressor, and the GQ test also significes the absence of heteroscedasticity so we will stick to the model after removing the influential observation and the model is 
+
+$$ y=-17.86915 + 0.66155\times X$$
+
+```{r}
+plot(df1$x,df1$y,main = "The Final Regression Plot",xlab="Price of oil",ylab = "Price of coal")
+abline(-17.86915,0.66155  ,col='red',lty=2)
+```
+

@@ -1,0 +1,395 @@
+---
+title: "Practical_2"
+author: "Soumarya Basak"
+date: "16/04/2022"
+output:
+  pdf_document:
+    keep_tex: yes
+  html_document:
+    df_print: paged
+---
+
+# Problem 1
+
+```{r}
+df<- read.csv("C:\\Users\\souma\\Dropbox\\Mstat_CU\\Sem 2\\Regression_analysis_1\\Data Sets\\con-exp_inc_dataset.csv")
+
+colnames(df)<-c('x_var','y_var')
+```
+
+```{r}
+lm_1<- lm(y_var~x_var,df)
+summary(lm_1)
+```
+# Scatter Plot
+```{r}
+plot(df$x_var,df$y_var,col="blue",
+     main="Scatter Plot of the data", xlab="income",ylab="Con-exp")
+#abline(lm_1)
+```
+The model is not fitted well as the intercept term is insignificant. There may be several reason of this --- the data may consist influential observations, the error variability may not be constant etc. In the following section we will try to find them.
+
+# Outlier
+```{r}
+influence.measures(lm_1)
+```
+There are 2 influential obsn 6, 7 th obsn
+
+SO we remove them from the model and refit the model below, 
+```{r}
+df_updated<- df[-c(6,7),]
+
+lm_1updated<- lm(y_var~x_var,df_updated)  # after removing influential observation
+summary(lm_1updated)
+```
+But still the model is inappropriate as, the intercept is still insignificant.
+
+Lets check for the second reason.
+
+As dropping the influential observations doesn't change the model so its better to work with the full model.
+
+# Residuals
+
+Now we will find the residual form the updated fit.
+```{r}
+res1<- resid(lm_1)  # residuals
+
+plot(df$x_var,res1,
+     main="Residual Plot ",
+     xlab="income",ylab="Residuals", col="magenta",pch=4) # residual plot
+abline(h=0)
+
+```
+
+
+
+So from the residual plot we notice that there is a heteroscedasticity, but to confirm that statistically we should test for this.\
+An famous test is **Goldfield Quant test**
+
+### Goldfield Quant Test
+
+```{r}
+library(lmtest)
+gqtest(lm_1,,fraction =6, order.by = ~df$x_var,data = df ) #alternative is more than
+```
+Since the p value is less than 0.05, we will reject the null hypothesis, so there is heteroscedasticity in the model.\
+
+So we need to workout with heteroscedasticity.
+
+
+# Obtaining model for Residuals
+
+We will fit an regression of $residual^2$ on x_var, where $residual_i^2$ can be looked upon as a estimate of $\sigma_i^2$
+
+```{r}
+df_res<-cbind(df,res1^2) # add the (ei)^2 values
+colnames(df_res)[3]<-"res"
+
+
+```
+
+```{r}
+# the model for the sigma
+res_lm1<-lm(res ~ x_var, data= df_res)
+summary(res_lm1)
+```
+
+Now from the above model, we will find an estimate of $\sigma_i^2$, by fitting this model, and given by 
+
+```{r}
+sigma_estimated<- predict(res_lm1)
+sigma_estimated
+```
+**The Plot of $x$ and $fitted(\sigma_i^2)$** (Unnecessary)
+```{r}
+plot(df_res$x_var,df_res$res)
+abline(res_lm1)
+```
+## Estimated Omega hat
+```{r}
+omega<- diag(sigma_estimated)
+
+```
+
+## Model's Design Matrix
+
+```{r}
+d_matrix <- model.matrix(lm_1)
+d_matrix
+```
+```{r}
+a1<- solve( t(d_matrix) %*% solve(omega) %*% d_matrix )
+a2<- t(d_matrix)  %*% solve(omega) %*% df$y_var
+
+beta_egls<- a1 %*% a2
+beta_egls
+
+```
+# The Model
+
+$$y=1.638355 + 0.867986\times x $$
+
+# The Scatter Plot
+
+```{r}
+plot(df$x_var,df$y_var,col='blue',
+     xlab = "Income",ylab = "COnsumer Expenditure",
+     main = "The Ultimate Scatter Plot")
+abline(1.638355, 0.867986,col='red',lty=2)
+```
+
+# Problem 2
+
+```{r}
+library(tidyverse)
+library(readr)
+library(readxl)
+```
+
+
+```{r}
+df<- read.csv("C:\\Users\\souma\\Dropbox\\Mstat_CU\\Sem 2\\Regression_analysis_1\\Data Sets\\dis_sp_dataset.csv")
+
+colnames(df)<- c("y","x")   # y=dis , x= sp
+head(df)
+
+```
+
+
+
+## Lets fit the regression
+
+```{r}
+reg1<- lm(y~x,data=df)
+summary(reg1)
+```
+
+```{r}
+# Scatter Plot
+plot(df$x,df$y,
+     main="Regression Plot",
+     xlab = "Speed", ylab="Distance")
+
+abline(reg1,col="red")
+```
+
+
+```{r}
+# The residuals
+res1<-resid(reg1)
+
+# Residual Plot
+plot(df$x,res1, main="Residual Plot",
+     xlab = "X",ylab = "residuals")
+abline(h=0)
+
+```
+From the residual plot we can suspect that there is a heterosecdasticity within the data, so should test for that. So we should go for the  **Glejser test**
+
+## Now lets check for Influencial Observation
+
+```{r}
+influence.measures(reg1)
+```
+
+So, we can see there are 4 influencial observation, viz 45,50,59,60 th observation.\
+Lets remove these
+
+### Regression fit after removing influencial
+
+```{r}
+df1<- df[-c(45,50,59,60),]
+```
+```{r}
+reg2<- lm(y~x,data = df1)
+summary(reg2)
+```
+
+### Lets see the residual plot
+```{r}
+# Model after removing influential observation
+res2<- resid(reg2)
+plot(df1$x,res2,main="Residual plot after removing Influencial Observation",
+     xlab = "Income",ylab = "Residuals")
+abline(h=0)
+
+```
+Still we can see that, there is a heteroscedasticity in the residuals. And the adjusted $R^2$ for the new model doesn't change much \
+So we will stick in the actual data set and previous model(`reg1` model), as removing data point causes information loss from our hand.
+
+## Test For Heteroscedasticity
+So we till test for heteroscedasticity by **Glejser Test**
+
+```{r}
+library(skedastic)
+# Glejser Test
+glejser(reg1)
+```
+It results that the p value is less than 0.05, so, the presence of Heteroscedasticity statistically significant under 5% level of significant.\
+
+So now we will remove the heteroscedasticity from the model from the data set , assuming the error variance as a linear function of speed with an intercept term.\
+
+## Remedial Measure
+```{r}
+res1_sq<- res1^2 # ei Square
+
+rem_lm<- lm(res1_sq~df$x)
+summary(rem_lm)
+
+```
+
+But, the intercept term is insignificant,  so we can drop this from the model. But here we are asked to work with an intercept term.\
+
+
+
+So the model is 
+$$ e_i^2 = -73.672  + 11.123 \times x  $$
+#### So, the estiamted sigma_i sq hats are
+
+```{r}
+sigma_estimated<- predict(rem_lm)
+
+omega<- diag(sigma_estimated)
+```
+
+## Lets find the design Matrix
+
+```{r}
+d_matrix<- model.matrix(reg1)
+d_matrix
+```
+
+```{r}
+
+a<- t(d_matrix) %*% solve(omega) %*% d_matrix 
+b<- t(d_matrix) %*% solve(omega) %*% df$y
+
+beta_egls2 <- solve(a) %*% b
+beta_egls2
+```
+
+
+# The Final Model
+
+So, after removing the heteroscedasticity, and find the final fitted model as,
+
+$$y=-24.118582 + 3.345985\times x  $$
+
+```{r}
+plot(df$x,df$y,main = "The Scatter Plot with the final Fitted Model ",
+     xlab = "speed",ylab = "Distence",col="green4")
+abline(-24.118582,3.345985,col='blue')
+```
+
+
+
+# Problem 3
+
+```{r}
+library(tidyverse)
+library(readr)
+library(readxl)
+```
+
+
+```{r}
+df<- read.csv("C:\\Users\\souma\\Dropbox\\Mstat_CU\\Sem 2\\Regression_analysis_1\\Data Sets\\stock_price_country.csv")
+head(df)
+```
+
+
+# Plot the data and fit a suitable Regression
+
+```{r}
+plot(df$x,df$y, main="Scatter Plot of the data",
+     xlab="Consumer price(X)",ylab = "Stock Price (Y)", col='red')
+```
+
+```{r}
+# regission fit
+reg3<- lm(y~x,data=df)
+summary(reg3)
+```
+
+```{r}
+plot(df$x,df$y, main="Regression Plot of the data",
+     xlab="Consumer price(X)",ylab = "Stock Price (Y)", col='red')
+abline(reg3)
+```
+## Lets check for influencial
+```{r}
+influence.measures(reg3)
+```
+The 5th and 9th obsn are influential
+```{r}
+df1<- df[-c(5,9),]
+reg3_up<- lm(y~x,data=df1)
+summary(reg3_up)
+```
+So its worst than the previous.
+
+So, its better to stick with the original model
+
+# Residual Plot
+```{r}
+res3<- resid(reg3)
+# residual plot
+plot(df$x,res3, xlim = c(0, 10),
+     main="Residual Plot", xlab="X", ylab="Residuals", col='red')
+abline(h=0)
+```
+
+```{r}
+plot(density(res3), main = "Density of the residuals")
+```
+
+# Goldfield Quant test
+```{r}
+library(lmtest)
+
+gqtest(reg3,fraction = 6,order.by = ~x, data = df)
+```
+Since the p value is more than 0.05, So we fail to reject the null hypothesis, so the data is homoscedastic.
+
+So OLS works good here.
+
+# Parameter of the Model
+```{r}
+reg3$coefficients
+
+```
+
+
+# Final Model
+
+```{r}
+plot(df$x,df$y, main = "The Final Fit",
+     xlab = "Consumer Price (X)" , ylab="Stok Price (Y)")
+abline(reg3,col='red')
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

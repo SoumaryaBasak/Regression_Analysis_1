@@ -1,0 +1,226 @@
+---
+title: "Practical_5_regression_2022"
+author: "Soumarya Basak"
+date: "14/05/2022"
+output: 
+  pdf_document: 
+    keep_tex: yes
+---
+
+# Transformation Of Variable
+
+# Problem 1
+
+
+# Import the data
+```{r}
+library(readr)
+library(tidyverse)
+library(readxl)
+```
+
+```{r}
+df <- read.csv("C:\\Users\\souma\\Dropbox\\Mstat_CU\\Sem 2\\Regression_analysis_1\\Data Sets\\problem_set_5_1.csv")
+colnames(df) <- c("y","x")
+df
+```
+
+# Plot of the Data
+
+```{r}
+plot(df$x,df$y,pch=19,col='blue',
+     xlab="x",ylab = "y",
+     main="The Scatter Plot of the Data ")
+```
+
+**Comment:**
+
+
+# Fit a model
+
+```{r}
+model1<- lm(y~x,data = df)
+summary(model1)
+```
+**Comment:** From the above model fit we see that both the coefficients are significant, and also the adjusted R squared is 0.98 and the residual standard error is also low, so it is a quite good fit. 
+
+```{r}
+plot(df$x,df$y,pch=19,col='blue',
+     xlab = "X",ylab = "y",
+     main = "Regression Plot")
+abline(model1, col='red')
+```
+From the plot we also see the plot fits well. So **I am quite satisfied**.
+
+Although, it is a good fit, lets try a Box_Tidwell transformation,
+$$x \rightarrow x^* = x^{(1/2)}$$
+
+
+
+# Box-Tidwell transformation
+
+This transformation makes a non-linear model to linear, here the plot is a arc of a parabolic curve, i.e. $y^2$ depends on x linearly, so we make a square root transformation. 
+
+$$x \rightarrow x^* = x^{(1/2)}$$
+
+
+```{r}
+df$x1 <- df$x^(1/2)
+df
+```
+
+Now regressing $y$ with respect to $x^{1/2}$,
+
+```{r}
+model2<- lm(y~x1,data = df)
+summary(model2)
+```
+
+For this model the coefficient are also significant, and the Adjusted R-squared value is 0.99, which is larger than previous value and the residual standard error is also lower than the previous one. 
+SO, the transformation more stabilizes the model. 
+
+
+```{r}
+plot(df$x1,df$y,pch=19,col="blue",
+     xlab = expression(sqrt(x)),ylab = "y",main = expression( "Regression Plot with "~ sqrt(x) ~" as regressor") )
+abline(model2, col='red')
+```
+
+
+# Problem 2
+
+## import the data
+```{r}
+df2<- read.csv("C:\\Users\\souma\\Dropbox\\Mstat_CU\\Sem 2\\Regression_analysis_1\\Data Sets\\problem_set_5_2.csv")
+colnames(df2)<- c("y","x1","x2")
+df2
+```
+```{r}
+# variables plot
+plot(df2)
+
+```
+
+
+
+# Fit the linear Regression
+
+```{r}
+model3<- lm(y~ x1+x2, data = df2)
+summary(model3)
+```
+From the above fit we can say that all the coefficients are significant. and the Adjusted R squared is 0.91 and residual sum of square is 0.1213
+
+
+# Residual Plot
+
+```{r}
+res<- resid(model3)
+
+### Residual sum square
+
+RSS <- sum(res^2)
+RSS
+```
+
+```{r}
+plot(fitted(model3),res, pch=19,col='pink',
+     xlab = "Predicted Value",ylab = "Residauls",
+     main = "Fitted Vs Residual Plot")
+
+abline(h=0, col='blue',lty=2)
+```
+```{r}
+plot(density(res), main = "Density plot of the residuals")
+
+```
+
+
+The variability of the model is not stabilized and also the errors doesn't follows the assumption of normality so we need transformation of response variable.
+
+
+
+# Transformation of Variable
+
+```{r}
+## Geometric Mean of Y
+y_g <- exp(mean(log(df2$y)))
+
+```
+
+```{r}
+lambda <- c(-2,-1, -0.5,0, 0.5,2,3)
+rss <- c()
+a<- c()
+
+for(i in 1:length(lambda)){
+  
+  if(lambda[i]!= 0){
+    m <-lm( ((y^lambda[i])/y_g) ~ x1 + x2 , data = df2 )
+  }
+  if(lambda[i]==0){
+    m <-lm( log(y) ~ x1 + x2 , data = df2 )
+  }
+  rss <- c(rss, sum((summary(m)$residuals)^2))
+  a<- c(a, summary(m)$adj.r.squared)
+}
+
+library(knitr)
+kable(cbind(lambda,"RSS"=round(rss,9),"Adj_R_squared"=a))
+
+```
+
+So the model fits well when the $\lambda=-2$, so the model will be more precise if we take $\lambda=2$ and transform the response variable.
+
+# THe model with lambda =-0.5
+
+```{r}
+model4 <-  m <-lm( ((y^(-0.5))/y_g) ~ x1 + x2 , data = df2 )
+summary(model4)
+
+```
+```{r}
+res2 <- resid(model4)
+plot(density(res2), main = paste("The RSS=",sum(res2^2),", The density Plot of the residuals"))
+```
+
+
+# Final Model
+
+$$y^*= \widehat\beta_0 +\widehat\beta_1 x_1 +\widehat\beta_2x_2 $$
+where $$y^* = \frac{y^{-1/2}}{Y_g} $$
+
+Here the estimated coefficients are,
+$$  y^* = (9.072e-02)+(-5.387e-04)\times x_1 +(-2.018e-04)\times x_2 $$
+
+This is the final model.
+
+Here is a big question........
+which lambda should we choose
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

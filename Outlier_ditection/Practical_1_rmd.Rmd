@@ -1,0 +1,587 @@
+---
+title: "Practical_1_SSR"
+author: "Soumarya Basak"
+date: "14/04/2022"
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    keep_tex: yes
+---
+
+```{r}
+#########  Practical 1 ##########
+library(readxl)
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(olsrr)
+```
+
+```{r}
+
+###### Data set #########
+df<- read.csv("C:\\Users\\souma\\Dropbox\\Mstat_CU\\Sem 2\\Regression_analysis_1\\Data Sets\\cigaratte_dataset.csv")
+colnames(df)<- c("Index","y_var","x_var")
+
+
+
+
+```
+
+```{r}
+plot(df$x_var,df$y_var,pch=16,col="blue",
+     xlab="Per capita cigeratte consumption",ylab = "Deaths due to lung cancer",
+     main="Cigeratte consumption VS Deaths due to lung cancer Plot ")
+```
+
+
+```{r}
+###### (a) ########
+
+ssr1<- lm(y_var~x_var,df)
+summary(ssr1)
+
+```
+
+**For the F test, the p value is more than 0.05, so the parameters the insignificant.**
+
+Both the parameters are not significant
+
+```{r}
+plot(df$x_var,df$y_var,pch=19,col="blue",
+     xlab="x_var",ylab = "y_var",
+     main=" Regression Plot")
+abline(ssr1,col="red")
+
+```
+This is due to the influential observation
+
+# The residuals
+
+```{r}
+res<- residuals(ssr1)
+cbind("Residuals"=res)
+```
+## STandardize Residuals
+```{r}
+res_std<- rstandard(ssr1)
+cbind("Standaredize_Residuals"=res_std)
+
+
+plot(abs(res_std),type='h',
+     ylab = "Absolute(std_Residuals)",ylim = c(0,3),
+     main="Visualization of Standardize Residuals")
+abline(h=0)
+abline(h=2,lty=2,col='magenta')
+```
+So we can see from the plot that there are 3 oulier values for Y_var
+
+
+
+## Studentize Residuals
+```{r}
+res_stu<-rstudent(ssr1)
+cbind("Studentize_Residuals"=res_stu)
+
+plot(abs(res_stu),type='h',
+     ylab = "Absolute(stud_Residuals)",ylim = c(0,4),
+     main="Visualization of Studentize Residuals"
+     )
+abline(h=2,col='magenta',lty=2)
+abline(h=0)
+
+```
+So studentize residual says that there are three outliers in y_var
+
+#### To find the y outliers
+```{r}
+
+df[which(abs(res_stu)>=2),]
+```
+## Leverage
+
+```{r}
+lev<-hatvalues(ssr1)
+cbind("Leverage"=lev)
+
+plot(lev,type='h',
+     ylab="Leverage", main="Visualization of Leverages"
+     )
+abline(h=(2/11),col='magenta',lty=2)
+```
+From the image it is clear that there are two 2 x outlier \
+as two values are more than $\frac{2p}{n}=\frac{2}{11}$
+
+
+#### To Identify the x outliers
+
+```{r}
+# arrange in decreasing order
+cbind("Leverage"=lev[order(-lev)])
+```
+so the 4th and 6th obsns are x-outliers
+
+
+
+# DFBETA
+
+```{r}
+db<-dfbetas(ssr1)
+db
+
+
+par(mfrow=c(1,2))
+plot(db[,1],type='h',
+     ylab = "DFBETAs in Intercept")
+abline(h=0)
+abline(h=2/(sqrt(11)),lty=2, col="magenta")
+abline(h=-2/(sqrt(11)),lty=2,col="magenta")
+
+plot(db[,2],type='h',
+     ylab = "DFBETAs in X_var coeeffecient")
+abline(h=0)
+abline(h=2/(sqrt(11)),lty=2,col="magenta")
+abline(h=-2/(sqrt(11)),lty=2,col="magenta")
+
+mtext("Visuals ofDFBETA's",side =3,line = -1 ,outer = TRUE)
+
+```
+
+so, is clear that there are 2 influential observation 
+
+```{r}
+print(which( abs(db[,1]) >2/(sqrt(11)) ) )
+paste(" ")
+which( abs(db[,2]) >2/(sqrt(11)) ) 
+```
+SO, for the 4th and 6th obs the DFBETa is high 
+
+# DFFIT
+
+range $=\frac{2}{\sqrt(11)}$
+
+```{r}
+d_fit<-dffits(ssr1)
+cbind("DEFIT"=d_fit)
+
+
+### Standardization of DFFIT
+
+v<- var(d_fit)*( (length(d_fit)-1)/length(d_fit) ) # variance of DFFIT
+
+std_d_fit <- (d_fit - mean(d_fit))/sqrt(v)
+
+
+plot(abs(std_d_fit),type='h', ylim = c(0,3),
+     ylab = "Absolute(standarize_DFFIT)",
+     main = "Visualization of Standardize DEFITs")
+abline(h=0)
+abline(h=2,lty=2,col='magenta')
+
+```
+So there are 2 values which act like a outlier as have high DFFIT values
+
+#### To identify the outlier
+```{r}
+cbind("DFFIT"=d_fit[order(-abs(d_fit))])
+```
+
+The 4th and 6th observations  have higher DFFIT values, so they may be some Influential observation
+
+# Cook's Distance
+
+```{r}
+cd<- cooks.distance(ssr1)
+cbind("Cook_d"=cd)
+
+plot(cd,type='h',ylab = "Cook's Distance",
+     main = "Visualization of Cook's Distance")
+abline(h=0)
+```
+
+All the above measures indicates theat the $4^{th}$ and $6^{th}$ obsn are influential observation
+
+# Next step
+
+so we remove the 6th and 4th obsn.
+
+```{r}
+df_ot<-df[-c(4,6),]
+
+ssr1_updated<-lm(y_var~x_var,df_ot)
+summary(ssr1_updated)
+```
+
+the parameters are insignificant and even the $R^2$ value is very low
+
+
+```{r}
+#plot(df_ot$x_var,df_ot$y_var,pch=19,col='blue')
+#abline(ssr1_updated,col='red')
+```
+The fit is again too bad, even the parameters are insignificant.
+So we don't need to model the response variable with the regrassor.
+
+## Now we remove the 11 th obsn with high cooks distance
+
+```{r}
+df_ott<-df[-c(4,6,11),]
+
+```
+```{r}
+ssr1_updated_2<-lm(y_var~x_var,df_ott)
+summary(ssr1_updated_2)
+```
+```{r}
+#plot(df_ott$x_var,df_ott$y_var,pch=19,col='blue')
+#abline(ssr1_updated_2,col='red')
+
+```
+So for the last model fits well , have higher $R^2$ values\
+but the intercept is statistically insignificant. And so,
+
+
+# Model without Intercept
+
+```{r}
+ssr1_updated_3<- lm(y_var~ 0 +x_var,df_ott)
+summary(ssr1_updated_3)
+
+
+
+```
+```{r}
+plot(df_ott$x_var,df_ott$y_var,pch=19,col='blue',xlim = c(100,650),ylim = c(0,300),
+     xlab = "Per capita cigeratte consumption",ylab = "Deaths due to lung cancer",
+     main = " Final Regression fit on the data")
+abline(ssr1_updated_3,col='red')
+
+```
+
+# The Model
+
+$$lung\_cancer = (0.40629 )\times cigaratte\_consumption $$
+# Weighted Least Square to deal with influential Observation
+
+Here we are define the 1/cook's distance as the weights to the data
+```{r}
+#Defining the weights
+wt= 1/cd
+wt<- wt/sum(wt) # normalize the weights
+
+
+wls<- lm(y_var~ x_var, data = df, weights = wt)
+summary(wls)
+```
+The intercept is insignificant, so we need to drop it 
+```{r}
+wls_up<- lm(y_var~ 0+x_var, data = df, weights = wt)
+summary(wls_up)
+```
+
+```{r}
+## The wls model
+
+plot(df$x_var, df$y_var, main = "Regression Plot",
+     pch=19,col='blue',
+     xlab = "Per capita cigeratte consumption",ylab = "Deaths due to lung cancer")
+abline(wls_up,col='red')
+```
+
+
+
+
+
+
+
+
+# Problem2
+
+### Data Input
+```{r}
+library(tidyverse)
+library(readr)
+library(readxl)
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+df2<- read.csv("C:\\Users\\souma\\Dropbox\\Mstat_CU\\Sem 2\\Regression_analysis_1\\Data Sets\\star_light_temp_dataset.csv")
+
+colnames(df2)<-c("sl no","x_var","y_var")
+head(df2)
+```
+
+```{r}
+plot(df2$x_var,df2$y_var,col="green3",pch=18,
+     xlab = "log(surface temperature)",ylab = "log(light intensity)",
+     main = " Surface temperature VS light intensity plot")
+```
+
+
+
+```{r}
+ssr2<- lm(y_var~x_var,df2)
+summary(ssr2)
+```
+Note that, the p-value for f statistics is 0.15 which is larger than 0.05, which implies that both the regression coefficients are statistically insignificant. so it says we don;t need to model at all. 
+
+
+```{r}
+plot(df2$x_var,df2$y_var,col="green3",pch=18,
+     xlab = "log(surface temperature)",ylab = "log(light intensity)",
+     main = "Regression Model with Insignificant coeefiecient")
+abline(ssr2)
+```
+
+```{r}
+influence.measures(ssr2)
+```
+
+
+there are 4 influential observation
+11,20,30,34
+
+```{r}
+df2_updated<-df2[-c(11,20,30,34),]
+
+plot(df2_updated$x_var, df2_updated$y_var,col="green3",pch=18,
+     xlab = "log(surface temperature)",ylab = "log(light intensity)",
+     main = " Surface temperature VS light intensity plot \n(after removing Influencial observation) \n")
+
+```
+```{r}
+ssr2_updated<- lm(y_var~x_var,df2_updated)
+summary(ssr2_updated)
+```
+```{r}
+plot(df2_updated$x_var,df2_updated$y_var,col="green3",pch=18,
+     xlab = "log(surface temperature)",ylab = "log(light intensity)",
+     main = " Surface temperature VS light intensity plot \n(after removing Influencial observation) \n")
+abline(ssr2_updated)
+```
+
+
+The $R^2$ is still too low
+
+```{r}
+influence.measures(ssr2_updated)
+```
+
+# Residual Plot
+
+```{r}
+res2<- residuals(ssr2)
+plot(res2,type='b', ylab="Residuals",main="Residual plot")
+abline(h=0)
+#plot(density(res2))
+```
+
+```{r}
+cbind(res2)
+```
+
+
+
+# Standardize Residuals
+```{r}
+res2_std <- rstandard(ssr2)
+
+plot(abs(res2_std),type = 'h', main = "Visualization of Stadardize Residuals",
+     ylab="Absolute(std_residuals)",
+     ylim = c(0,2.5))
+abline(h=2,col='magenta',lty=2)
+abline(h=0)
+
+```
+ordering in decreasing order
+```{r}
+# after ordering the standardize residuals, from increasing to decreasig order in absolute values
+res2_std[order(-abs(res2_std))]
+
+```
+
+
+## Studentize Residual
+```{r}
+res2_stu<- rstudent(ssr2)
+
+plot(abs(res2_stu),type = 'h',
+      main = "Visualization of Studentize Residuals",
+     ylab="Absolute(stud_residuals)" ,
+     ylim=c(0,2.5))
+abline(h=2,col='magenta',lty=2)
+abline(h=0)
+```
+
+```{r}
+# arranged in decreasing order in absolute values
+res2_stu[order(-abs(res2_stu))]
+```
+
+
+# Leverage
+
+```{r}
+lev2<- hatvalues(ssr2)
+
+plot(lev2,type='h',
+     main = "Visualization of Leverages",
+     ylab="Leverage")
+abline(h=2/47,col='magenta',lty=2)
+```
+```{r}
+lev2[order(-lev2)]
+```
+
+
+
+```{r}
+which(lev2>(2/47))
+```
+
+# Dfbeta
+
+```{r}
+b<- dfbetas(ssr2)
+
+par(mfrow=c(1,2))
+plot(b[,1],type='h', 
+     main="Intercept",
+     ylab="DFBETAs in intercept")
+abline(h=c((-2/sqrt(47)),(2/sqrt(47))) , col='magenta',lty=2)
+abline(h=0)
+
+plot(b[,2],type='h',
+     main="Slope coefficient",
+     ylab="DFBETAs in slope coeffiecient")
+abline(h=c((-2/sqrt(47)),(2/sqrt(47))) ,col='magenta',lty=2)
+abline(h=0)
+mtext("Visualization of DFBETAs", side = 3,line = -1, outer = TRUE)
+```
+
+```{r}
+which( abs(b[,1])> 2/sqrt(47))
+
+which(abs(b[,2]) > 2/sqrt(47))
+```
+
+
+# DFFITS
+
+```{r}
+bb<- dffits(ssr2)
+
+v<- var(bb)*( (length(bb)-1)/length(bb) )
+
+std_bb<- ( bb- mean(bb)) /sqrt(v)
+
+
+
+
+plot(abs(std_bb),type='h', 
+     main="Visualization for standardize DFFITs",
+     ylab="Absloute(std_DFFIT)")
+abline(h=2,col="magenta",lty=2)
+abline(h=0)
+
+
+```
+```{r}
+std_bb[order(-abs(std_bb))]
+```
+
+# Cook's Distance
+
+```{r}
+cd<- cooks.distance(ssr2)
+
+plot(cd,type='h', main=" Vosualization of Cook's Diatance",
+     ylab="Cook's Distance")
+abline(h=0)
+```
+```{r}
+cd[order(-cd)]
+```
+
+
+# The more model
+
+
+```{r}
+df2_ott<- df2[-c(11,14,20,30,34),]
+
+
+ssr3<- lm(y_var~x_var,df2_ott)
+summary(ssr3)
+```
+Here the p value fro f statistics is less than 0.05, so the coefficients are not equals. But the p value for  intercept is 0.066  which is larger than 0.05, so the intercept term is statistically insignificant, so we need to drop it from the model.
+
+### Model without intercept
+
+```{r}
+ssr3_updated<- lm(y_var~ 0+x_var, data = df2_ott)
+summary(ssr3_updated)
+```
+## The regression plot
+```{r}
+plot(df2_ott$x_var,df2_ott$y_var, pch=18,col="green3",
+     main="The Final Regression Plot \n(After removing Influential Observations) \n",
+     xlab="log(surface temparature)",
+     ylab = "log(light intensity")
+
+abline(ssr3_updated,col="red")
+```
+The residual standard deviation is very low for the model and the adjusted R-squared is 0.99 which is too good, so our models fits well here.
+
+
+
+**After deleting 4 obsn the model is good**
+
+
+
+# Weighted Least Square
+
+Since we have 5 influential observation and we are removing them we are losing our information. So, instead of this we may use weighted least square method.
+
+here we are taking the weights inversly proportional to the cook's distance.
+
+```{r}
+# Defining Weights
+wt<- 1/cd
+wt<- wt/sum(wt)
+
+# weighted least square
+wls_2<- lm(y_var ~ x_var , data=df2, weights = wt)
+summary(wls_2)
+```
+
+Now the model is too bad to work with , so we have the only choice to stick with to the model which we obtained after removing the 5 observations.  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
